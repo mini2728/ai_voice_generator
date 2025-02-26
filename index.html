@@ -19,7 +19,7 @@
             max-width: 500px;
             margin: auto;
         }
-        textarea, input {
+        textarea, input, select {
             width: 90%;
             padding: 10px;
             margin: 10px 0;
@@ -50,6 +50,7 @@
         async function generateSpeech() {
             const text = document.getElementById("textInput").value;
             let filename = document.getElementById("filenameInput").value.trim();
+            const voice = document.getElementById("voiceSelect").value; // 取得選擇的語音模型
             const button = document.getElementById("generateButton");
             const loadingText = document.getElementById("loading");
 
@@ -70,7 +71,7 @@
             const response = await fetch("https://doug-line-bot-nodejs-2b39dfdeb20a.herokuapp.com/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text, filename })
+                body: JSON.stringify({ text, filename, voice }) // 傳送選擇的語音
             });
 
             const data = await response.json();
@@ -82,7 +83,7 @@
             if (data.success) {
                 alert("✅ 語音已生成，將自動下載：" + data.filename);
 
-                // **🔹 直接下載 MP3，而不是存放在 Heroku**
+                // **🔹 直接下載 MP3**
                 const blob = await fetch("https://doug-line-bot-nodejs-2b39dfdeb20a.herokuapp.com/download?filename=" + data.filename).then(res => res.blob());
                 const downloadLink = document.createElement("a");
                 downloadLink.href = URL.createObjectURL(blob);
@@ -105,6 +106,19 @@
 
         <label for="filenameInput">請輸入檔名（自動補 `.mp3`）：</label>
         <input type="text" id="filenameInput" value="output"><br>
+
+        <label for="voiceSelect">選擇語音模型：</label>
+        <select id="voiceSelect">
+            <option value="alloy">Alloy</option>
+            <option value="ash">Ash</option>
+            <option value="coral">Coral</option>
+            <option value="echo">Echo</option>
+            <option value="fable">Fable</option>
+            <option value="onyx" selected>Onyx (預設)</option>
+            <option value="nova">Nova</option>
+            <option value="sage">Sage</option>
+            <option value="shimmer">Shimmer</option>
+        </select><br>
 
         <button id="generateButton" onclick="generateSpeech()">生成語音</button>
         <p id="loading">⏳ 語音生成中，請稍候...</p>
