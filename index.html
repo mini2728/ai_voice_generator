@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,6 +12,7 @@
             text-align: center;
             padding: 20px;
         }
+
         .container {
             background: white;
             padding: 20px;
@@ -19,13 +21,17 @@
             max-width: 500px;
             margin: auto;
         }
-        textarea, input, select {
+
+        textarea,
+        input,
+        select {
             width: 90%;
             padding: 10px;
             margin: 10px 0;
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+
         button {
             background-color: #4CAF50;
             color: white;
@@ -35,10 +41,12 @@
             cursor: pointer;
             font-size: 16px;
         }
+
         button:disabled {
             background-color: #ccc;
             cursor: not-allowed;
         }
+
         #loading {
             display: none;
             font-size: 16px;
@@ -50,54 +58,56 @@
         async function generateSpeech() {
             const text = document.getElementById("textInput").value;
             let filename = document.getElementById("filenameInput").value.trim();
-            const voice = document.getElementById("voiceSelect").value; // 取得選擇的語音模型
+            const voice = document.getElementById("voiceSelect").value;
             const button = document.getElementById("generateButton");
             const loadingText = document.getElementById("loading");
+            const speed = 1.0;
+            const url = "https://line-bot-nodejs.mini14091309.workers.dev";
 
-            if (!text) {
-                alert("請輸入文字內容！");
-                return;
-            }
+            if (!text) { alert("請輸入文字內容！"); return; }
+            if (!filename.toLowerCase().endsWith(".mp3")) filename += ".mp3";
 
-            // 🔹 確保副檔名為 .mp3
-            if (!filename.toLowerCase().endsWith(".mp3")) {
-                filename += ".mp3";
-            }
-
-            // 🔹 顯示 loading，並禁用按鈕
             button.disabled = true;
             loadingText.style.display = "block";
 
-            const response = await fetch("https://doug-line-bot-nodejs-2b39dfdeb20a.herokuapp.com/generate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text, filename, voice }) // 傳送選擇的語音
-            });
+            try {
+                const response = await fetch(url + "/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text, voice, speed })
+                });
 
-            const data = await response.json();
+                if (!response.ok) {
+                    const ct = response.headers.get("content-type") || "";
+                    const body = ct.includes("application/json")
+                        ? JSON.stringify(await response.json())
+                        : await response.text();
+                    throw new Error(`HTTP ${response.status}: ${body}`);
+                }
 
-            // 🔹 隱藏 loading，啟用按鈕
-            button.disabled = false;
-            loadingText.style.display = "none";
+                const blob = await response.blob();
+                if (blob.size === 0) throw new Error("音訊大小為 0 bytes");
 
-            if (data.success) {
-                alert("✅ 語音已生成，將自動下載：" + data.filename);
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 
-                // **🔹 直接下載 MP3**
-                const blob = await fetch("https://doug-line-bot-nodejs-2b39dfdeb20a.herokuapp.com/download?filename=" + data.filename).then(res => res.blob());
-                const downloadLink = document.createElement("a");
-                downloadLink.href = URL.createObjectURL(blob);
-                downloadLink.download = filename;
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
-
-            } else {
-                alert("❌ 發生錯誤：" + data.error);
+                alert("✅ 已下載：" + filename);
+            } catch (e) {
+                alert("❌ 發生錯誤：" + (e?.message || e));
+            } finally {
+                button.disabled = false;
+                loadingText.style.display = "none";
             }
         }
     </script>
 </head>
+
 <body>
     <div class="container">
         <h1>AI 語音生成 (可下載)</h1>
@@ -124,4 +134,5 @@
         <p id="loading">⏳ 語音生成中，請稍候...</p>
     </div>
 </body>
+
 </html>
